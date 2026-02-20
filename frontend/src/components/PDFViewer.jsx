@@ -6,6 +6,7 @@ import Toolbar from "./Toolbar";
 import Sidebar from "./Sidebar";
 import RightPanel from "./RightPanel";
 import AnnotationCanvas from "./AnnotationCanvas";
+import SegmentOverlay from "./SegmentOverlay";
 import ShortcutsOverlay from "./ShortcutsOverlay";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -29,6 +30,8 @@ export default function PDFViewer({ doc, onBack }) {
   const [revisionMode, setRevisionMode] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [canvasDims, setCanvasDims] = useState({ width: 0, height: 0 });
+  const [segmentAiAction, setSegmentAiAction] = useState(null);
 
   const canvasRef = useRef(null);
   const textLayerRef = useRef(null);
@@ -77,6 +80,8 @@ export default function PDFViewer({ doc, onBack }) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
+
+      setCanvasDims({ width: viewport.width, height: viewport.height });
 
       const task = page.render({ canvasContext: ctx, viewport });
       renderTaskRef.current = task;
@@ -201,6 +206,11 @@ export default function PDFViewer({ doc, onBack }) {
     return () => document.removeEventListener("mouseup", handler);
   }, []);
 
+  const handleSegmentAiAction = useCallback((action, content, segType) => {
+    setSegmentAiAction({ action, content, segType });
+    setShowRightPanel(true);
+  }, []);
+
   const pageAnnotations = state?.annotations?.[String(currentPage)] || [];
   const pageNote = state?.notes?.[String(currentPage)];
   const pageTags =
@@ -284,6 +294,13 @@ export default function PDFViewer({ doc, onBack }) {
             <div className="pdf-page-wrapper">
               <canvas ref={canvasRef} />
               <div className="text-layer" ref={textLayerRef} />
+              <SegmentOverlay
+                docId={doc.id}
+                currentPage={currentPage}
+                canvasWidth={canvasDims.width}
+                canvasHeight={canvasDims.height}
+                onAiAction={handleSegmentAiAction}
+              />
               <AnnotationCanvas
                 annotations={pageAnnotations}
                 tool={tool}
@@ -315,6 +332,8 @@ export default function PDFViewer({ doc, onBack }) {
           onAddDefLink={addDefLink}
           onRemoveDefLink={removeDefLink}
           selectedText={selectedText}
+          segmentAiAction={segmentAiAction}
+          onSegmentAiActionHandled={() => setSegmentAiAction(null)}
           totalPages={totalPages}
           goToPage={goToPage}
         />

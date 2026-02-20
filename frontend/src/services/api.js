@@ -66,6 +66,9 @@ export const addLink = (id, link) =>
 export const deleteLink = (id, linkId) =>
   request(`/state/${id}/links/${linkId}`, { method: "DELETE" });
 
+// Segments
+export const getPageSegments = (docId, page) => request(`/documents/${docId}/segments/${page}`);
+
 // AI
 export const explainText = (docId, page, text) =>
   request("/ai/explain", {

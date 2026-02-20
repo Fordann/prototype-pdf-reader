@@ -1,10 +1,12 @@
+import json
 import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.models.schemas import PDFDocument
 from app.services.storage import (
-    UPLOAD_DIR, save_document_meta, load_document_meta,
+    UPLOAD_DIR, DATA_DIR, save_document_meta, load_document_meta,
     generate_id, list_documents,
 )
+from app.services.pdf_extractor import extract_all_pages, extract_page_segments
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -24,12 +26,16 @@ async def upload_pdf(file: UploadFile = File(...)):
     file_path = UPLOAD_DIR / f"{doc_id}.pdf"
     file_path.write_bytes(content)
 
-    # We don't parse PDF server-side; the frontend uses PDF.js
-    # We store a placeholder page count that the frontend will update
+    # Extract segments from every page using PyMuPDF
+    all_segments = extract_all_pages(str(file_path))
+    total_pages = max(all_segments.keys()) if all_segments else 0
+    segments_path = DATA_DIR / f"{doc_id}_segments.json"
+    segments_path.write_text(json.dumps(all_segments, ensure_ascii=False), encoding="utf-8")
+
     doc = PDFDocument(
         id=doc_id,
         filename=file.filename,
-        total_pages=0,
+        total_pages=total_pages,
         file_path=str(file_path),
     )
     save_document_meta(doc)
@@ -59,6 +65,20 @@ async def get_document(doc_id: str):
     return doc
 
 
+@router.get("/{doc_id}/segments/{page}")
+async def get_page_segments(doc_id: str, page: int):
+    """Get extracted segments for a specific page (1-indexed)."""
+    segments_path = DATA_DIR / f"{doc_id}_segments.json"
+    if segments_path.exists():
+        all_segments = json.loads(segments_path.read_text(encoding="utf-8"))
+        return all_segments.get(str(page), [])
+    # Fallback: extract on the fly
+    doc = load_document_meta(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return extract_page_segments(doc.file_path, page - 1)
+
+
 @router.delete("/{doc_id}")
 async def delete_document(doc_id: str):
     doc = load_document_meta(doc_id)
@@ -69,12 +89,12 @@ async def delete_document(doc_id: str):
     if pdf_path.exists():
         pdf_path.unlink()
 
-    from app.services.storage import DATA_DIR, get_document_path
+    from app.services.storage import get_document_path
     meta_path = DATA_DIR / f"{doc_id}_meta.json"
     state_path = get_document_path(doc_id)
-    if meta_path.exists():
-        meta_path.unlink()
-    if state_path.exists():
-        state_path.unlink()
+    segments_path = DATA_DIR / f"{doc_id}_segments.json"
+    for p in [meta_path, state_path, segments_path]:
+        if p.exists():
+            p.unlink()
 
     return {"status": "deleted"}

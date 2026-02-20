@@ -18,6 +18,8 @@ export default function RightPanel({
   onAddDefLink,
   onRemoveDefLink,
   selectedText,
+  segmentAiAction,
+  onSegmentAiActionHandled,
   totalPages,
   goToPage,
 }) {
@@ -70,12 +72,14 @@ export default function RightPanel({
     setShowNewLink(false);
   }, [currentPage, linkTarget, linkText, linkLabel, onAddDefLink]);
 
-  const handleExplain = useCallback(async () => {
-    if (!selectedText) return;
+  const handleExplain = useCallback(async (text) => {
+    const content = text || selectedText;
+    if (!content) return;
+    setActiveTab("ai");
     setAiLoading(true);
     setAiResult(null);
     try {
-      const res = await api.explainText(docId, currentPage, selectedText);
+      const res = await api.explainText(docId, currentPage, content);
       setAiResult(res.explanation);
     } catch (e) {
       setAiResult("Error: " + e.message);
@@ -85,12 +89,14 @@ export default function RightPanel({
   }, [docId, currentPage, selectedText]);
 
   const handleAlter = useCallback(
-    async (type) => {
-      if (!selectedText) return;
+    async (type, text) => {
+      const content = text || selectedText;
+      if (!content) return;
+      setActiveTab("ai");
       setAlterLoading(true);
       setAlterResult(null);
       try {
-        const res = await api.alterContent(docId, currentPage, selectedText, type);
+        const res = await api.alterContent(docId, currentPage, content, type);
         setAlterResult(res.altered_content);
       } catch (e) {
         setAlterResult("Error: " + e.message);
@@ -100,6 +106,18 @@ export default function RightPanel({
     },
     [docId, currentPage, selectedText]
   );
+
+  // Handle segment AI actions (1-click from overlay)
+  useEffect(() => {
+    if (!segmentAiAction) return;
+    const { action, content } = segmentAiAction;
+    if (action === "explain") {
+      handleExplain(content);
+    } else {
+      handleAlter(action, content);
+    }
+    if (onSegmentAiActionHandled) onSegmentAiActionHandled();
+  }, [segmentAiAction]);
 
   const handleRecap = useCallback(async () => {
     setAiLoading(true);
@@ -356,7 +374,7 @@ export default function RightPanel({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <button
               className="btn btn-secondary"
-              onClick={handleExplain}
+              onClick={() => handleExplain()}
               disabled={!selectedText || aiLoading}
             >
               Explain selected text

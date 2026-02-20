@@ -446,6 +446,114 @@
   to { transform: rotate(360deg); }
 }
 
+/* --- Segment overlay --- */
+.segment-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.segment-block {
+  position: absolute;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.segment-block:hover {
+  border-color: var(--accent);
+  background: rgba(100, 255, 218, 0.06);
+}
+
+.segment-block.active {
+  border-color: var(--accent);
+  background: rgba(100, 255, 218, 0.10);
+  box-shadow: 0 0 12px rgba(100, 255, 218, 0.15);
+  z-index: 10;
+}
+
+.segment-text:hover, .segment-text.active {
+  border-color: rgba(100, 255, 218, 0.6);
+  background: rgba(100, 255, 218, 0.08);
+}
+.segment-formula:hover, .segment-formula.active {
+  border-color: rgba(124, 77, 255, 0.7);
+  background: rgba(124, 77, 255, 0.12);
+}
+.segment-image:hover, .segment-image.active {
+  border-color: rgba(255, 215, 64, 0.7);
+  background: rgba(255, 215, 64, 0.10);
+}
+
+.segment-badge {
+  position: absolute;
+  top: -9px;
+  left: 6px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.segment-block:hover .segment-badge,
+.segment-block.active .segment-badge {
+  opacity: 1;
+}
+
+.segment-badge-text {
+  background: var(--accent);
+  color: #1a1a2e;
+}
+.segment-badge-formula {
+  background: var(--accent-secondary);
+  color: white;
+}
+.segment-badge-image {
+  background: var(--warning);
+  color: #1a1a2e;
+}
+
+.segment-actions {
+  position: absolute;
+  bottom: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.seg-action-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  white-space: nowrap;
+}
+
+.seg-action-btn:hover {
+  background: var(--accent);
+  color: #1a1a2e;
+  border-color: var(--accent);
+}
+
 /* --- Keyboard shortcuts overlay --- */
 .shortcuts-overlay {
   position: fixed;
