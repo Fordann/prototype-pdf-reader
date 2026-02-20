@@ -285,24 +285,26 @@ export default function PDFViewer({ doc, onBack }) {
           />
 
           <div className="pdf-container" ref={containerRef}>
-            <div className="pdf-page-wrapper">
-              <canvas ref={canvasRef} />
-              <div className="text-layer" ref={textLayerRef} />
+            <div className="pdf-page-column">
+              <div className="pdf-page-wrapper">
+                <canvas ref={canvasRef} />
+                <div className="text-layer" ref={textLayerRef} />
+                <AnnotationCanvas
+                  annotations={pageAnnotations}
+                  tool={tool}
+                  color={color}
+                  strokeWidth={strokeWidth}
+                  currentPage={currentPage}
+                  canvasRef={canvasRef}
+                  onAddAnnotation={addAnnotation}
+                  onDeleteAnnotation={deleteAnnotation}
+                />
+              </div>
               <SegmentOverlay
                 docId={doc.id}
                 currentPage={currentPage}
                 canvasWidth={canvasDims.width}
                 canvasHeight={canvasDims.height}
-              />
-              <AnnotationCanvas
-                annotations={pageAnnotations}
-                tool={tool}
-                color={color}
-                strokeWidth={strokeWidth}
-                currentPage={currentPage}
-                canvasRef={canvasRef}
-                onAddAnnotation={addAnnotation}
-                onDeleteAnnotation={deleteAnnotation}
               />
             </div>
           </div>

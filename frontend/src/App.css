@@ -159,6 +159,13 @@
   position: relative;
 }
 
+.pdf-page-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
 .pdf-page-wrapper {
   position: relative;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -449,7 +456,8 @@
 /* --- Segment overlay --- */
 .segment-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   pointer-events: auto;
   z-index: 5;
 }
@@ -674,38 +682,66 @@
   animation: spin 0.8s linear infinite;
 }
 
-/* Unpositioned segments (no bbox from AI) */
-.segment-unpositioned {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  right: 4px;
+/* Unpositioned segments rendered as markdown cards below the page */
+.segment-cards {
+  width: 100%;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  pointer-events: auto;
-  z-index: 6;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
 }
 
-.segment-inline {
-  position: relative !important;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
-  border-radius: 6px;
+.segment-card {
   background: var(--bg-panel);
-  max-width: 280px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
   overflow: hidden;
 }
 
-.segment-inline-text {
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.segment-card:hover {
+  border-color: var(--accent);
+}
+
+.segment-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(100, 255, 218, 0.15);
+}
+
+.segment-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 0;
+}
+
+.segment-card-tag {
   font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+
+.segment-check-inline {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: bold;
+}
+
+.segment-card-body {
+  padding: 6px 12px 10px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.segment-card-body p {
+  margin: 4px 0;
 }
 
 /* --- Keyboard shortcuts overlay --- */

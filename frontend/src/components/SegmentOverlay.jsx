@@ -47,7 +47,6 @@ export default function SegmentOverlay({
 
       if (!combinedContent) return;
 
-      // Find an anchor bbox from selected segments (first one with a bbox)
       let anchorBbox = null;
       for (const idx of [...indices].reverse()) {
         if (segments[idx]?.bbox) {
@@ -81,7 +80,6 @@ export default function SegmentOverlay({
 
   if (!canvasWidth || !canvasHeight || loading) return null;
 
-  // Split: segments with bbox (positioned overlay) vs without (listed at bottom)
   const positionedSegs = [];
   const unpositionedSegs = [];
   segments.forEach((seg, i) => {
@@ -91,7 +89,6 @@ export default function SegmentOverlay({
 
   const hasSelection = selected.size > 0;
 
-  // Popup position
   let popupStyle = {};
   if (popup) {
     if (popup.anchorBbox) {
@@ -110,118 +107,118 @@ export default function SegmentOverlay({
   }
 
   return (
-    <div className="segment-overlay" onClick={() => setSelected(new Set())}>
-      {/* Positioned segments (with bbox) */}
-      {positionedSegs.map(({ seg, i }) => {
-        const [x0, y0, x1, y1] = seg.bbox;
-        const style = {
-          left: x0 * canvasWidth,
-          top: y0 * canvasHeight,
-          width: (x1 - x0) * canvasWidth,
-          height: (y1 - y0) * canvasHeight,
-        };
-        return (
-          <SegmentBlock
-            key={i}
-            seg={seg}
-            index={i}
-            style={style}
-            isSelected={selected.has(i)}
-            onToggle={toggleSelect}
-          />
-        );
-      })}
-
-      {/* Unpositioned segments (no bbox) - stacked at bottom */}
-      {unpositionedSegs.length > 0 && (
-        <div className="segment-unpositioned" onClick={(e) => e.stopPropagation()}>
-          {unpositionedSegs.map(({ seg, i }) => (
-            <SegmentBlock
+    <>
+      {/* Positioned overlay on top of the PDF canvas */}
+      <div
+        className="segment-overlay"
+        style={{ width: canvasWidth, height: canvasHeight }}
+        onClick={() => setSelected(new Set())}
+      >
+        {positionedSegs.map(({ seg, i }) => {
+          const [x0, y0, x1, y1] = seg.bbox;
+          const style = {
+            left: x0 * canvasWidth,
+            top: y0 * canvasHeight,
+            width: (x1 - x0) * canvasWidth,
+            height: (y1 - y0) * canvasHeight,
+          };
+          const semTag = seg.semantic_tag;
+          const isSelected = selected.has(i);
+          return (
+            <div
               key={i}
-              seg={seg}
-              index={i}
-              style={{}}
-              isSelected={selected.has(i)}
-              onToggle={toggleSelect}
-              inline
-            />
-          ))}
-        </div>
-      )}
+              className={`segment-block segment-${seg.type} ${semTag ? "segment-tagged" : ""} ${isSelected ? "selected" : ""}`}
+              style={{
+                ...style,
+                ...(semTag && !isSelected
+                  ? { borderColor: semTag.color + "80", borderLeftColor: semTag.color, borderLeftWidth: 3 }
+                  : {}),
+              }}
+              onClick={(e) => toggleSelect(i, e)}
+            >
+              {semTag && (
+                <span className="segment-badge" style={{ background: semTag.color, color: "#fff" }}>
+                  {semTag.label}
+                </span>
+              )}
+              {isSelected && <span className="segment-check">&#10003;</span>}
+            </div>
+          );
+        })}
 
-      {/* Floating action bar */}
-      {hasSelection && !popup && (
-        <div className="segment-action-bar" onClick={(e) => e.stopPropagation()}>
-          <span className="seg-action-count">
-            {selected.size} segment{selected.size > 1 ? "s" : ""}
-          </span>
-          <button className="seg-action-btn" onClick={() => handleAction("explain")}>Expliquer</button>
-          <button className="seg-action-btn" onClick={() => handleAction("table")}>Tableau</button>
-          <button className="seg-action-btn" onClick={() => handleAction("timeline")}>Timeline</button>
-          <button className="seg-action-btn" onClick={() => handleAction("diagram")}>Diagramme</button>
-          <button className="seg-action-btn seg-action-close" onClick={() => setSelected(new Set())}>
-            &#10005;
-          </button>
-        </div>
-      )}
-
-      {/* AI result popup */}
-      {popup && (
-        <div className="segment-popup" style={popupStyle} onClick={(e) => e.stopPropagation()}>
-          <div className="segment-popup-header">
-            <span className="segment-popup-title">
-              {popup.action === "explain" ? "Explication"
-                : popup.action === "table" ? "Tableau"
-                : popup.action === "timeline" ? "Timeline"
-                : "Diagramme"}
+        {/* Floating action bar */}
+        {hasSelection && !popup && (
+          <div className="segment-action-bar" onClick={(e) => e.stopPropagation()}>
+            <span className="seg-action-count">
+              {selected.size} segment{selected.size > 1 ? "s" : ""}
             </span>
-            <button className="segment-popup-close" onClick={closePopup}>&#10005;</button>
+            <button className="seg-action-btn" onClick={() => handleAction("explain")}>Expliquer</button>
+            <button className="seg-action-btn" onClick={() => handleAction("table")}>Tableau</button>
+            <button className="seg-action-btn" onClick={() => handleAction("timeline")}>Timeline</button>
+            <button className="seg-action-btn" onClick={() => handleAction("diagram")}>Diagramme</button>
+            <button className="seg-action-btn seg-action-close" onClick={() => setSelected(new Set())}>
+              &#10005;
+            </button>
           </div>
-          <div className="segment-popup-body">
-            {popup.loading ? (
-              <div className="segment-popup-loading">
-                <div className="spinner" />
-                <span>Génération en cours...</span>
-              </div>
-            ) : (
-              <div className="markdown-content">
-                <Markdown>{popup.result || ""}</Markdown>
-              </div>
-            )}
+        )}
+
+        {/* AI result popup */}
+        {popup && (
+          <div className="segment-popup" style={popupStyle} onClick={(e) => e.stopPropagation()}>
+            <div className="segment-popup-header">
+              <span className="segment-popup-title">
+                {popup.action === "explain" ? "Explication"
+                  : popup.action === "table" ? "Tableau"
+                  : popup.action === "timeline" ? "Timeline"
+                  : "Diagramme"}
+              </span>
+              <button className="segment-popup-close" onClick={closePopup}>&#10005;</button>
+            </div>
+            <div className="segment-popup-body">
+              {popup.loading ? (
+                <div className="segment-popup-loading">
+                  <div className="spinner" />
+                  <span>Génération en cours...</span>
+                </div>
+              ) : (
+                <div className="markdown-content">
+                  <Markdown>{popup.result || ""}</Markdown>
+                </div>
+              )}
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Unpositioned segments rendered as markdown cards below the page */}
+      {unpositionedSegs.length > 0 && (
+        <div className="segment-cards" style={{ width: canvasWidth }}>
+          {unpositionedSegs.map(({ seg, i }) => {
+            const semTag = seg.semantic_tag;
+            const isSelected = selected.has(i);
+            return (
+              <div
+                key={i}
+                className={`segment-card ${isSelected ? "selected" : ""}`}
+                style={semTag ? { borderLeftColor: semTag.color } : {}}
+                onClick={(e) => toggleSelect(i, e)}
+              >
+                <div className="segment-card-header">
+                  {semTag && (
+                    <span className="segment-card-tag" style={{ background: semTag.color }}>
+                      {semTag.label}
+                    </span>
+                  )}
+                  {isSelected && <span className="segment-check-inline">&#10003;</span>}
+                </div>
+                <div className="segment-card-body markdown-content">
+                  <Markdown>{seg.content}</Markdown>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
-    </div>
-  );
-}
-
-function SegmentBlock({ seg, index, style, isSelected, onToggle, inline }) {
-  const semTag = seg.semantic_tag;
-  const tagClass = semTag ? "segment-tagged" : "";
-
-  return (
-    <div
-      className={`segment-block segment-${seg.type} ${tagClass} ${isSelected ? "selected" : ""} ${inline ? "segment-inline" : ""}`}
-      style={{
-        ...style,
-        ...(semTag && !isSelected
-          ? { borderColor: semTag.color + "80", borderLeftColor: semTag.color, borderLeftWidth: 3 }
-          : {}),
-      }}
-      onClick={(e) => onToggle(index, e)}
-    >
-      {semTag && (
-        <span className="segment-badge" style={{ background: semTag.color, color: "#fff" }}>
-          {semTag.label}
-        </span>
-      )}
-      {isSelected && <span className="segment-check">&#10003;</span>}
-      {/* Show content preview for inline (unpositioned) segments */}
-      {inline && (
-        <span className="segment-inline-text">
-          {seg.content.slice(0, 80)}{seg.content.length > 80 ? "..." : ""}
-        </span>
-      )}
-    </div>
+    </>
   );
 }
