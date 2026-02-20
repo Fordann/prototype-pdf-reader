@@ -1,6 +1,8 @@
 import os
 import anthropic
 
+MODEL = "claude-haiku-4-5-20251001"
+
 
 def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic()
@@ -18,9 +20,8 @@ Texte sélectionné :
 Fournis une explication claire, structurée et pédagogique de ce passage. Utilise des exemples si pertinent. Réponds en français."""
 
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
-        thinking={"type": "adaptive"},
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -50,9 +51,8 @@ Génère :
 Réponds en français. Formate en Markdown."""
 
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=4096,
-        thinking={"type": "adaptive"},
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -99,9 +99,8 @@ Instruction : {instruction}
 Réponds uniquement avec le contenu transformé, en français, formaté en Markdown."""
 
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=4096,
-        thinking={"type": "adaptive"},
         messages=[{"role": "user", "content": prompt}],
     )
 
