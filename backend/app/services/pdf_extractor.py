@@ -113,6 +113,7 @@ def _ai_segment_page(page_image_b64: str) -> list[dict]:
 1. LIRE tout le texte visible, y compris le texte dans les images, figures, schémas, graphiques
 2. SEGMENTER le contenu en sections logiques basées sur le SENS et l'enchaînement des idées (PAS la mise en page)
 3. CLASSIFIER chaque section
+4. FORMATER chaque section en Markdown lisible
 
 Tags disponibles : {tag_list}
 
@@ -125,8 +126,16 @@ Règles de segmentation :
 - Le texte dans les figures/images doit être inclus dans un segment "figure"
 - Les titres/sous-titres sont des segments "title" séparés
 
+Règles de formatage du contenu :
+- Utilise du Markdown : **gras** pour les termes importants, *italique* pour les variables
+- Sépare les paragraphes avec des sauts de ligne
+- Utilise des listes à puces (- ) ou numérotées (1. ) quand c'est pertinent
+- Les formules doivent être sur leur propre ligne, entourées de `backticks` ou en bloc
+- Aère le texte : jamais un bloc compact sans sauts de ligne
+- Conserve fidèlement le contenu, mais rends-le lisible
+
 Réponds UNIQUEMENT avec un JSON array. Chaque élément :
-{{"tag": "...", "content": "le texte exact copié de la page"}}
+{{"tag": "...", "content": "contenu formaté en markdown"}}
 
 JSON :"""
 
