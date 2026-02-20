@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import * as api from "../services/api";
+
+const mdPlugins = { remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] };
 
 export default function SegmentOverlay({
   docId,
@@ -182,7 +187,7 @@ export default function SegmentOverlay({
                 </div>
               ) : (
                 <div className="markdown-content">
-                  <Markdown>{popup.result || ""}</Markdown>
+                  <Markdown {...mdPlugins}>{popup.result || ""}</Markdown>
                 </div>
               )}
             </div>
@@ -212,7 +217,7 @@ export default function SegmentOverlay({
                   {isSelected && <span className="segment-check-inline">&#10003;</span>}
                 </div>
                 <div className="segment-card-body markdown-content">
-                  <Markdown>{seg.content}</Markdown>
+                  <Markdown {...mdPlugins}>{seg.content}</Markdown>
                 </div>
               </div>
             );

@@ -130,7 +130,11 @@ Règles de formatage du contenu :
 - Utilise du Markdown : **gras** pour les termes importants, *italique* pour les variables
 - Sépare les paragraphes avec des sauts de ligne
 - Utilise des listes à puces (- ) ou numérotées (1. ) quand c'est pertinent
-- Les formules doivent être sur leur propre ligne, entourées de `backticks` ou en bloc
+- Les formules mathématiques DOIVENT être en LaTeX :
+  - Formule inline : $formule$ (ex: $x^2 + y^2 = r^2$)
+  - Formule en bloc (display) : $$formule$$ sur sa propre ligne (ex: $$\\int_0^1 f(x)\\,dx$$)
+  - TOUJOURS utiliser le mode display $$ $$ pour les formules importantes, les équations, les définitions mathématiques
+  - Utilise les commandes LaTeX : \\frac, \\sum, \\int, \\lim, \\sqrt, \\mathbb, \\forall, \\exists, \\in, \\cup, \\cap, etc.
 - Aère le texte : jamais un bloc compact sans sauts de ligne
 - Conserve fidèlement le contenu, mais rends-le lisible
 

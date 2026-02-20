@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import * as api from "../services/api";
+
+const mdPlugins = { remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] };
 
 export default function RightPanel({
   visible,
@@ -406,7 +411,7 @@ export default function RightPanel({
           {aiResult && (
             <div className="ai-panel">
               <div className="markdown-content" style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}>
-                <Markdown>{aiResult}</Markdown>
+                <Markdown {...mdPlugins}>{aiResult}</Markdown>
               </div>
             </div>
           )}
@@ -414,7 +419,7 @@ export default function RightPanel({
           {alterResult && (
             <div className="ai-panel" style={{ borderColor: "var(--accent-secondary)" }}>
               <div className="markdown-content" style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}>
-                <Markdown>{alterResult}</Markdown>
+                <Markdown {...mdPlugins}>{alterResult}</Markdown>
               </div>
             </div>
           )}

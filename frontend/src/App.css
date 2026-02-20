@@ -808,6 +808,48 @@
   background: var(--bg-secondary);
 }
 
+/* KaTeX math rendering */
+.segment-card-body .katex-display {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  overflow-x: auto;
+}
+
+.segment-card-body .katex {
+  color: var(--text);
+  font-size: 1.1em;
+}
+
+.segment-card-body .katex-display .katex {
+  font-size: 1.2em;
+}
+
+.markdown-content .katex-display {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  overflow-x: auto;
+}
+
+.markdown-content .katex {
+  color: var(--text);
+  font-size: 1.1em;
+}
+
+.segment-popup-body .katex-display {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+  overflow-x: auto;
+}
+
 /* --- Keyboard shortcuts overlay --- */
 .shortcuts-overlay {
   position: fixed;
