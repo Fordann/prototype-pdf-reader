@@ -7,6 +7,7 @@ from app.services.storage import (
     generate_id, list_documents,
 )
 from app.services.pdf_extractor import extract_all_pages, extract_page_segments
+import fitz
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -26,9 +27,13 @@ async def upload_pdf(file: UploadFile = File(...)):
     file_path = UPLOAD_DIR / f"{doc_id}.pdf"
     file_path.write_bytes(content)
 
-    # Extract segments from every page using PyMuPDF
+    # Get page count from PyMuPDF
+    pdf_doc = fitz.open(str(file_path))
+    total_pages = len(pdf_doc)
+    pdf_doc.close()
+
+    # Extract and classify segments from every page
     all_segments = extract_all_pages(str(file_path))
-    total_pages = max(all_segments.keys()) if all_segments else 0
     segments_path = DATA_DIR / f"{doc_id}_segments.json"
     segments_path.write_text(json.dumps(all_segments, ensure_ascii=False), encoding="utf-8")
 
