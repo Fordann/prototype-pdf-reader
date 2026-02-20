@@ -8,6 +8,7 @@ import RightPanel from "./RightPanel";
 import AnnotationCanvas from "./AnnotationCanvas";
 import SegmentOverlay from "./SegmentOverlay";
 import ShortcutsOverlay from "./ShortcutsOverlay";
+import ConceptMap from "./ConceptMap";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.mjs",
@@ -29,6 +30,7 @@ export default function PDFViewer({ doc, onBack }) {
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [revisionMode, setRevisionMode] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showConceptMap, setShowConceptMap] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [canvasDims, setCanvasDims] = useState({ width: 0, height: 0 });
 
@@ -172,6 +174,9 @@ export default function PDFViewer({ doc, onBack }) {
         case "r":
           setRevisionMode((m) => !m);
           break;
+        case "m":
+          setShowConceptMap((s) => !s);
+          break;
         case "z":
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
@@ -239,6 +244,13 @@ export default function PDFViewer({ doc, onBack }) {
             &#9654;
           </button>
         </div>
+        <button
+          className={`btn btn-icon ${showConceptMap ? "active" : ""}`}
+          onClick={() => setShowConceptMap((s) => !s)}
+          title="Carte des notions (M)"
+        >
+          &#9741;
+        </button>
         <button
           className={`btn btn-icon ${revisionMode ? "active" : ""}`}
           onClick={() => setRevisionMode((m) => !m)}
@@ -332,6 +344,14 @@ export default function PDFViewer({ doc, onBack }) {
         />
       </div>
 
+      {showConceptMap && (
+        <ConceptMap
+          docId={doc.id}
+          goToPage={goToPage}
+          currentPage={currentPage}
+          onClose={() => setShowConceptMap(false)}
+        />
+      )}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
     </div>
   );

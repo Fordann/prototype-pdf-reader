@@ -69,6 +69,9 @@ export const deleteLink = (id, linkId) =>
 // Segments
 export const getPageSegments = (docId, page) => request(`/documents/${docId}/segments/${page}`);
 
+// Concept graph
+export const getConceptGraph = (docId) => request(`/documents/${docId}/concepts`);
+
 // AI
 export const explainText = (docId, page, text) =>
   request("/ai/explain", {

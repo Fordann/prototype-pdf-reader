@@ -850,6 +850,179 @@
   overflow-x: auto;
 }
 
+/* --- Concept Map --- */
+.concept-map-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 10, 30, 0.92);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+}
+
+.concept-map-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.concept-map-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.concept-map-legend {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.concept-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.concept-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.concept-map-canvas {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  cursor: grab;
+}
+
+.concept-map-canvas:active {
+  cursor: grabbing;
+}
+
+.concept-map-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  min-width: 800px;
+  min-height: 600px;
+}
+
+.concept-map-loading,
+.concept-map-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Concept nodes */
+.concept-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--bg-panel);
+  border: 2px solid;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+  min-width: 80px;
+  max-width: 180px;
+  text-align: center;
+  z-index: 2;
+}
+
+.concept-node:hover {
+  z-index: 10;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.concept-node.dimmed {
+  opacity: 0.2;
+}
+
+.concept-node.current-page {
+  box-shadow: 0 0 0 3px var(--accent) inset;
+}
+
+.concept-node-type {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.concept-node-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+/* Tooltip on hover */
+.concept-node-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 200px;
+  max-width: 280px;
+  z-index: 20;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.concept-tooltip-desc {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.concept-tooltip-pages {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.concept-page-link {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.concept-page-link:hover,
+.concept-page-link.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
 /* --- Keyboard shortcuts overlay --- */
 .shortcuts-overlay {
   position: fixed;

@@ -6,7 +6,7 @@ from app.services.storage import (
     UPLOAD_DIR, DATA_DIR, save_document_meta, load_document_meta,
     generate_id, list_documents,
 )
-from app.services.pdf_extractor import extract_all_pages, extract_page_segments
+from app.services.pdf_extractor import extract_all_pages, extract_page_segments, extract_concept_graph
 import fitz
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -36,6 +36,11 @@ async def upload_pdf(file: UploadFile = File(...)):
     all_segments = extract_all_pages(str(file_path))
     segments_path = DATA_DIR / f"{doc_id}_segments.json"
     segments_path.write_text(json.dumps(all_segments, ensure_ascii=False), encoding="utf-8")
+
+    # Build concept graph linking notions across pages
+    concept_graph = extract_concept_graph(all_segments)
+    concepts_path = DATA_DIR / f"{doc_id}_concepts.json"
+    concepts_path.write_text(json.dumps(concept_graph, ensure_ascii=False), encoding="utf-8")
 
     doc = PDFDocument(
         id=doc_id,
@@ -84,6 +89,15 @@ async def get_page_segments(doc_id: str, page: int):
     return extract_page_segments(doc.file_path, page - 1)
 
 
+@router.get("/{doc_id}/concepts")
+async def get_concepts(doc_id: str):
+    """Get the concept graph for a document."""
+    concepts_path = DATA_DIR / f"{doc_id}_concepts.json"
+    if concepts_path.exists():
+        return json.loads(concepts_path.read_text(encoding="utf-8"))
+    return {"notions": [], "links": []}
+
+
 @router.delete("/{doc_id}")
 async def delete_document(doc_id: str):
     doc = load_document_meta(doc_id)
@@ -98,7 +112,8 @@ async def delete_document(doc_id: str):
     meta_path = DATA_DIR / f"{doc_id}_meta.json"
     state_path = get_document_path(doc_id)
     segments_path = DATA_DIR / f"{doc_id}_segments.json"
-    for p in [meta_path, state_path, segments_path]:
+    concepts_path = DATA_DIR / f"{doc_id}_concepts.json"
+    for p in [meta_path, state_path, segments_path, concepts_path]:
         if p.exists():
             p.unlink()
 

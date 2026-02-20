@@ -293,3 +293,89 @@ def extract_all_pages(pdf_path: str) -> dict[int, list[dict]]:
         if segs:
             result[i + 1] = segs
     return result
+
+
+def extract_concept_graph(all_segments: dict) -> dict:
+    """Build a concept graph linking notions across pages.
+
+    Takes {page_number: [segments]} and returns:
+        { notions: [...], links: [...] }
+    """
+    # Build a condensed summary of all segments for the AI
+    summary_lines = []
+    for page_str, segs in all_segments.items():
+        page = int(page_str)
+        for idx, seg in enumerate(segs):
+            tag = seg.get("semantic_tag", {})
+            tag_name = tag.get("tag", "text") if tag else "text"
+            content = seg.get("content", "").strip()
+            # Keep first 200 chars to stay within token limits
+            preview = content[:200].replace("\n", " ")
+            if preview:
+                summary_lines.append(f"[Page {page}, #{idx}, {tag_name}] {preview}")
+
+    if not summary_lines:
+        return {"notions": [], "links": []}
+
+    summary = "\n".join(summary_lines)
+
+    prompt = f"""Tu es un assistant pédagogique. Voici les segments extraits d'un cours :
+
+{summary}
+
+Analyse ce contenu et identifie :
+1. Les NOTIONS CLÉS (concepts, définitions, théorèmes, propriétés, formules importantes)
+2. Les LIENS entre ces notions (quelle notion utilise, dépend de, illustre, prouve, généralise une autre)
+
+Pour chaque notion, indique :
+- Un identifiant court (id)
+- Le nom de la notion
+- Le type (definition, theorem, property, formula, concept, method, example)
+- Les pages où elle apparaît
+- Une description courte (1 phrase)
+
+Pour chaque lien, indique :
+- La source (id de la notion)
+- La cible (id de la notion)
+- Le type de relation : "uses" (utilise), "proves" (démontre), "illustrates" (illustre), "generalizes" (généralise), "requires" (nécessite), "defines" (définit)
+- Un label court décrivant le lien
+
+Réponds UNIQUEMENT avec un JSON :
+{{"notions": [{{"id": "...", "name": "...", "type": "...", "pages": [1, 3], "description": "..."}}], "links": [{{"source": "...", "target": "...", "type": "...", "label": "..."}}]}}
+
+JSON :"""
+
+    try:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        result_text = ""
+        for block in response.content:
+            if block.type == "text":
+                result_text = block.text
+                break
+
+        match = re.search(r"\{.*\}", result_text, re.DOTALL)
+        if match:
+            graph = json.loads(match.group())
+            # Assign colors based on type
+            type_colors = {
+                "definition": "#00BCD4",
+                "theorem": "#F44336",
+                "property": "#9C27B0",
+                "formula": "#7C4DFF",
+                "concept": "#FF9800",
+                "method": "#4CAF50",
+                "example": "#8BC34A",
+            }
+            for notion in graph.get("notions", []):
+                notion["color"] = type_colors.get(notion.get("type", ""), "#78909C")
+            return graph
+    except Exception:
+        pass
+
+    return {"notions": [], "links": []}
