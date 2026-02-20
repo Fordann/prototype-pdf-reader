@@ -217,12 +217,18 @@ input:focus, textarea:focus {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.markdown-content h1 { font-size: 20px; margin: 12px 0 8px; }
+.markdown-content {
+  color: var(--text);
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.markdown-content h1 { font-size: 20px; margin: 12px 0 8px; color: var(--text); }
 .markdown-content h2 { font-size: 17px; margin: 10px 0 6px; color: var(--accent); }
-.markdown-content h3 { font-size: 15px; margin: 8px 0 4px; }
-.markdown-content p { margin: 6px 0; line-height: 1.5; }
+.markdown-content h3 { font-size: 15px; margin: 8px 0 4px; color: var(--text); }
+.markdown-content p { margin: 6px 0; line-height: 1.6; }
 .markdown-content ul, .markdown-content ol { margin: 6px 0; padding-left: 20px; }
-.markdown-content li { margin: 3px 0; }
+.markdown-content li { margin: 3px 0; line-height: 1.5; }
 .markdown-content code {
   background: var(--bg-secondary);
   padding: 1px 4px;
@@ -236,10 +242,17 @@ input:focus, textarea:focus {
   overflow-x: auto;
   margin: 8px 0;
 }
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+}
 .markdown-content table { border-collapse: collapse; width: 100%; margin: 8px 0; }
 .markdown-content th, .markdown-content td {
   border: 1px solid var(--border);
   padding: 6px 10px;
   text-align: left;
+  color: var(--text);
 }
 .markdown-content th { background: var(--bg-secondary); }
+.markdown-content strong { color: var(--accent); }
+.markdown-content a { color: var(--accent-secondary); }

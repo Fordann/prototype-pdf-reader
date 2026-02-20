@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import Markdown from "react-markdown";
 import * as api from "../services/api";
 
 export default function RightPanel({
@@ -404,21 +405,17 @@ export default function RightPanel({
 
           {aiResult && (
             <div className="ai-panel">
-              <div
-                className="markdown-content"
-                style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}
-                dangerouslySetInnerHTML={{ __html: simpleMarkdown(aiResult) }}
-              />
+              <div className="markdown-content" style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}>
+                <Markdown>{aiResult}</Markdown>
+              </div>
             </div>
           )}
 
           {alterResult && (
             <div className="ai-panel" style={{ borderColor: "var(--accent-secondary)" }}>
-              <div
-                className="markdown-content"
-                style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}
-                dangerouslySetInnerHTML={{ __html: simpleMarkdown(alterResult) }}
-              />
+              <div className="markdown-content" style={{ fontSize: 13, maxHeight: 400, overflow: "auto" }}>
+                <Markdown>{alterResult}</Markdown>
+              </div>
             </div>
           )}
         </div>
@@ -427,20 +424,3 @@ export default function RightPanel({
   );
 }
 
-function simpleMarkdown(text) {
-  if (!text) return "";
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>")
-    .replace(/\n\n/g, "<br/><br/>")
-    .replace(/\n/g, "<br/>");
-}
