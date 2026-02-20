@@ -31,7 +31,6 @@ export default function PDFViewer({ doc, onBack }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [canvasDims, setCanvasDims] = useState({ width: 0, height: 0 });
-  const [segmentAiAction, setSegmentAiAction] = useState(null);
 
   const canvasRef = useRef(null);
   const textLayerRef = useRef(null);
@@ -206,11 +205,6 @@ export default function PDFViewer({ doc, onBack }) {
     return () => document.removeEventListener("mouseup", handler);
   }, []);
 
-  const handleSegmentAiAction = useCallback((action, content, segType) => {
-    setSegmentAiAction({ action, content, segType });
-    setShowRightPanel(true);
-  }, []);
-
   const pageAnnotations = state?.annotations?.[String(currentPage)] || [];
   const pageNote = state?.notes?.[String(currentPage)];
   const pageTags =
@@ -299,7 +293,6 @@ export default function PDFViewer({ doc, onBack }) {
                 currentPage={currentPage}
                 canvasWidth={canvasDims.width}
                 canvasHeight={canvasDims.height}
-                onAiAction={handleSegmentAiAction}
               />
               <AnnotationCanvas
                 annotations={pageAnnotations}
@@ -332,8 +325,6 @@ export default function PDFViewer({ doc, onBack }) {
           onAddDefLink={addDefLink}
           onRemoveDefLink={removeDefLink}
           selectedText={selectedText}
-          segmentAiAction={segmentAiAction}
-          onSegmentAiActionHandled={() => setSegmentAiAction(null)}
           totalPages={totalPages}
           goToPage={goToPage}
         />

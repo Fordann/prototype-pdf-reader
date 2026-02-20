@@ -450,7 +450,7 @@
 .segment-overlay {
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 5;
 }
 
@@ -468,26 +468,45 @@
   background: rgba(100, 255, 218, 0.06);
 }
 
-.segment-block.active {
+/* Selected state (multi-select) */
+.segment-block.selected {
   border-color: var(--accent);
-  background: rgba(100, 255, 218, 0.10);
-  box-shadow: 0 0 12px rgba(100, 255, 218, 0.15);
+  background: rgba(100, 255, 218, 0.12);
+  box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);
   z-index: 10;
 }
 
-.segment-text:hover, .segment-text.active {
+.segment-text:hover, .segment-text.selected {
   border-color: rgba(100, 255, 218, 0.6);
   background: rgba(100, 255, 218, 0.08);
 }
-.segment-formula:hover, .segment-formula.active {
+.segment-formula:hover, .segment-formula.selected {
   border-color: rgba(124, 77, 255, 0.7);
   background: rgba(124, 77, 255, 0.12);
 }
-.segment-image:hover, .segment-image.active {
+.segment-image:hover, .segment-image.selected {
   border-color: rgba(255, 215, 64, 0.7);
   background: rgba(255, 215, 64, 0.10);
 }
 
+/* Semantic tag colored left border */
+.segment-tagged {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+/* Selection checkmark */
+.segment-check {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* Badge */
 .segment-badge {
   position: absolute;
   top: -9px;
@@ -503,7 +522,8 @@
 }
 
 .segment-block:hover .segment-badge,
-.segment-block.active .segment-badge {
+.segment-block.selected .segment-badge,
+.segment-tagged .segment-badge {
   opacity: 1;
 }
 
@@ -520,20 +540,34 @@
   color: #1a1a2e;
 }
 
-.segment-actions {
-  position: absolute;
-  bottom: -36px;
+/* Floating action bar (fixed at bottom of overlay when segments selected) */
+.segment-action-bar {
+  position: sticky;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 5px 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 30;
   white-space: nowrap;
-  z-index: 20;
+  pointer-events: auto;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.seg-action-count {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  padding-right: 4px;
+  border-right: 1px solid var(--border);
+  margin-right: 2px;
 }
 
 .seg-action-btn {
@@ -552,6 +586,92 @@
   background: var(--accent);
   color: #1a1a2e;
   border-color: var(--accent);
+}
+
+.seg-action-close {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 4px 6px;
+}
+.seg-action-close:hover {
+  color: var(--danger);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* AI Result Popup near source */
+.segment-popup {
+  position: absolute;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.segment-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.segment-popup-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.segment-popup-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.segment-popup-close:hover {
+  color: var(--danger);
+  background: rgba(255, 82, 82, 0.1);
+}
+
+.segment-popup-body {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.segment-popup-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+.segment-popup-loading .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* --- Keyboard shortcuts overlay --- */

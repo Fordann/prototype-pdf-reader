@@ -18,8 +18,6 @@ export default function RightPanel({
   onAddDefLink,
   onRemoveDefLink,
   selectedText,
-  segmentAiAction,
-  onSegmentAiActionHandled,
   totalPages,
   goToPage,
 }) {
@@ -72,14 +70,12 @@ export default function RightPanel({
     setShowNewLink(false);
   }, [currentPage, linkTarget, linkText, linkLabel, onAddDefLink]);
 
-  const handleExplain = useCallback(async (text) => {
-    const content = text || selectedText;
-    if (!content) return;
-    setActiveTab("ai");
+  const handleExplain = useCallback(async () => {
+    if (!selectedText) return;
     setAiLoading(true);
     setAiResult(null);
     try {
-      const res = await api.explainText(docId, currentPage, content);
+      const res = await api.explainText(docId, currentPage, selectedText);
       setAiResult(res.explanation);
     } catch (e) {
       setAiResult("Error: " + e.message);
@@ -89,14 +85,12 @@ export default function RightPanel({
   }, [docId, currentPage, selectedText]);
 
   const handleAlter = useCallback(
-    async (type, text) => {
-      const content = text || selectedText;
-      if (!content) return;
-      setActiveTab("ai");
+    async (type) => {
+      if (!selectedText) return;
       setAlterLoading(true);
       setAlterResult(null);
       try {
-        const res = await api.alterContent(docId, currentPage, content, type);
+        const res = await api.alterContent(docId, currentPage, selectedText, type);
         setAlterResult(res.altered_content);
       } catch (e) {
         setAlterResult("Error: " + e.message);
@@ -106,18 +100,6 @@ export default function RightPanel({
     },
     [docId, currentPage, selectedText]
   );
-
-  // Handle segment AI actions (1-click from overlay)
-  useEffect(() => {
-    if (!segmentAiAction) return;
-    const { action, content } = segmentAiAction;
-    if (action === "explain") {
-      handleExplain(content);
-    } else {
-      handleAlter(action, content);
-    }
-    if (onSegmentAiActionHandled) onSegmentAiActionHandled();
-  }, [segmentAiAction]);
 
   const handleRecap = useCallback(async () => {
     setAiLoading(true);
