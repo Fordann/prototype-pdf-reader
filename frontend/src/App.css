@@ -674,6 +674,40 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* Unpositioned segments (no bbox from AI) */
+.segment-unpositioned {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: auto;
+  z-index: 6;
+}
+
+.segment-inline {
+  position: relative !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  max-width: 280px;
+  overflow: hidden;
+}
+
+.segment-inline-text {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+}
+
 /* --- Keyboard shortcuts overlay --- */
 .shortcuts-overlay {
   position: fixed;

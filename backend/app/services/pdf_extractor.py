@@ -1,8 +1,10 @@
-"""Extract structured segments from PDF pages using PyMuPDF.
+"""Extract structured segments from PDF pages using PyMuPDF + Claude Haiku vision.
 
-Two-pass approach:
-1. Extract raw blocks and merge spatially adjacent ones into logical paragraphs
-2. Classify merged segments semantically using Claude Haiku
+Approach:
+1. Render each page as an image
+2. Also extract positioned text blocks from PyMuPDF (for bbox mapping)
+3. Send page image to Haiku vision: segment by MEANING, classify, read text from images
+4. Map AI segments back to PyMuPDF blocks for bounding boxes
 """
 
 import base64
@@ -11,194 +13,142 @@ import re
 import fitz  # PyMuPDF
 import anthropic
 
-MATH_SYMBOLS = set("=+−×÷∑∏∫∂∇√∞≈≠≤≥±∈∉⊂⊃∪∩∀∃αβγδεζηθικλμνξπρσφψω")
-
-MATH_PATTERNS = re.compile(
-    r"(?:"
-    r"[∑∏∫∂∇√∞≈≠≤≥±×÷∈∉⊂⊃∪∩∀∃]"
-    r"|\\(?:frac|sqrt|sum|int|lim|log|ln|sin|cos|tan)"
-    r")"
-)
-
-# Tag palette used by the AI classifier
 TAG_PALETTE = {
-    "definition":  {"label": "Définition",   "color": "#00BCD4"},
-    "theorem":     {"label": "Théorème",     "color": "#F44336"},
-    "proposition": {"label": "Proposition",  "color": "#FF5722"},
-    "lemma":       {"label": "Lemme",        "color": "#E91E63"},
-    "corollary":   {"label": "Corollaire",   "color": "#D32F2F"},
-    "proof":       {"label": "Preuve",       "color": "#795548"},
-    "example":     {"label": "Exemple",      "color": "#4CAF50"},
-    "remark":      {"label": "Remarque",     "color": "#FF9800"},
-    "property":    {"label": "Propriété",    "color": "#9C27B0"},
-    "exercise":    {"label": "Exercice",     "color": "#2196F3"},
-    "important":   {"label": "Important",    "color": "#FF1744"},
-    "title":       {"label": "Titre",        "color": "#607D8B"},
-    "formula":     {"label": "Formule",      "color": "#7C4DFF"},
-    "introduction":{"label": "Introduction", "color": "#009688"},
-    "conclusion":  {"label": "Conclusion",   "color": "#455A64"},
-    "list":        {"label": "Liste",        "color": "#8BC34A"},
+    "definition":   {"label": "Définition",   "color": "#00BCD4"},
+    "theorem":      {"label": "Théorème",     "color": "#F44336"},
+    "proposition":  {"label": "Proposition",  "color": "#FF5722"},
+    "lemma":        {"label": "Lemme",        "color": "#E91E63"},
+    "corollary":    {"label": "Corollaire",   "color": "#D32F2F"},
+    "proof":        {"label": "Preuve",       "color": "#795548"},
+    "example":      {"label": "Exemple",      "color": "#4CAF50"},
+    "remark":       {"label": "Remarque",     "color": "#FF9800"},
+    "property":     {"label": "Propriété",    "color": "#9C27B0"},
+    "exercise":     {"label": "Exercice",     "color": "#2196F3"},
+    "important":    {"label": "Important",    "color": "#FF1744"},
+    "title":        {"label": "Titre",        "color": "#607D8B"},
+    "formula":      {"label": "Formule",      "color": "#7C4DFF"},
+    "introduction": {"label": "Introduction", "color": "#009688"},
+    "conclusion":   {"label": "Conclusion",   "color": "#455A64"},
+    "list":         {"label": "Liste",        "color": "#8BC34A"},
+    "text":         {"label": "Texte",        "color": "#78909C"},
+    "figure":       {"label": "Figure",       "color": "#FFD740"},
 }
 
 
-def _is_math_block(text: str) -> bool:
-    if len(text.strip()) < 2:
-        return False
-    symbol_count = sum(1 for c in text if c in MATH_SYMBOLS)
-    if symbol_count >= 3:
-        return True
-    matches = MATH_PATTERNS.findall(text)
-    ratio = len(matches) / max(len(text.split()), 1)
-    return ratio > 0.4
+def _normalize(text: str) -> str:
+    """Normalize text for fuzzy matching."""
+    return " ".join(text.lower().split())
 
 
-def _merge_blocks(raw_blocks: list[dict], page_height: float) -> list[dict]:
-    """Merge spatially adjacent text blocks into logical paragraphs.
-
-    Heuristic: two consecutive blocks are merged if:
-    - They are vertically close (gap < threshold based on font size)
-    - They have similar horizontal alignment (same column)
-    - Neither is a title/header (large font or short + bold)
-    """
-    if not raw_blocks:
-        return []
-
-    # Sort by vertical position
-    sorted_blocks = sorted(raw_blocks, key=lambda b: (b["bbox"][1], b["bbox"][0]))
-
-    merged = [sorted_blocks[0]]
-
-    for block in sorted_blocks[1:]:
-        prev = merged[-1]
-
-        prev_bottom = prev["bbox"][3]
-        curr_top = block["bbox"][1]
-        gap = curr_top - prev_bottom
-
-        # Estimate line height from the previous block
-        prev_height = prev["bbox"][3] - prev["bbox"][1]
-        prev_lines = max(prev["content"].count("\n") + 1, 1)
-        avg_line_h = prev_height / prev_lines
-
-        # Threshold: merge if gap is less than 1.2x average line height
-        gap_threshold = max(avg_line_h * 1.2, page_height * 0.015)
-
-        # Check horizontal overlap (same column)
-        prev_left, prev_right = prev["bbox"][0], prev["bbox"][2]
-        curr_left, curr_right = block["bbox"][0], block["bbox"][2]
-        h_overlap = min(prev_right, curr_right) - max(prev_left, curr_left)
-        min_width = min(prev_right - prev_left, curr_right - curr_left)
-        h_aligned = h_overlap > min_width * 0.5 if min_width > 0 else False
-
-        # Don't merge if the block looks like a title (very short, single line)
-        is_title_like = (
-            block["content"].count("\n") == 0
-            and len(block["content"].strip()) < 60
-            and (block.get("avg_font_size", 0) > prev.get("avg_font_size", 12) * 1.2)
-        )
-
-        if gap < gap_threshold and gap >= 0 and h_aligned and not is_title_like:
-            # Merge: expand bbox and concatenate content
-            merged[-1] = {
-                "type": prev["type"],
-                "content": prev["content"] + "\n" + block["content"],
-                "bbox": [
-                    min(prev["bbox"][0], block["bbox"][0]),
-                    prev["bbox"][1],
-                    max(prev["bbox"][2], block["bbox"][2]),
-                    block["bbox"][3],
-                ],
-                "avg_font_size": prev.get("avg_font_size", 12),
-            }
-        else:
-            merged.append(block)
-
-    return merged
-
-
-def _extract_raw_blocks(page) -> tuple[list[dict], list[dict]]:
-    """Extract raw text and image blocks from a PyMuPDF page."""
-    width = page.rect.width
-    height = page.rect.height
-    text_blocks = []
-    image_blocks = []
-
-    blocks = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)["blocks"]
-    for block in blocks:
+def _extract_positioned_blocks(page) -> list[dict]:
+    """Get text blocks with their absolute bboxes from PyMuPDF."""
+    blocks = []
+    raw = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)["blocks"]
+    for block in raw:
         if block["type"] == 0:
-            lines_text = []
-            font_sizes = []
+            lines = []
             for line in block.get("lines", []):
-                spans_text = "".join(span["text"] for span in line.get("spans", []))
-                if spans_text.strip():
-                    lines_text.append(spans_text)
-                for span in line.get("spans", []):
-                    if span["text"].strip():
-                        font_sizes.append(span["size"])
-
-            text = "\n".join(lines_text).strip()
-            if not text:
-                continue
-
-            avg_fs = sum(font_sizes) / len(font_sizes) if font_sizes else 12
-
-            text_blocks.append({
-                "type": "formula" if _is_math_block(text) else "text",
-                "content": text,
-                "bbox": list(block["bbox"]),  # absolute coords
-                "avg_font_size": avg_fs,
-            })
-
+                t = "".join(span["text"] for span in line.get("spans", []))
+                if t.strip():
+                    lines.append(t)
+            text = "\n".join(lines).strip()
+            if text:
+                blocks.append({"text": text, "bbox": list(block["bbox"])})
         elif block["type"] == 1:
-            try:
-                img_data = block.get("image", b"")
-                if img_data:
-                    b64 = base64.b64encode(img_data).decode("ascii")
-                    ext = block.get("ext", "png")
-                    image_blocks.append({
-                        "type": "image",
-                        "content": f"data:image/{ext};base64,{b64}",
-                        "bbox": list(block["bbox"]),
-                    })
-            except Exception:
-                pass
-
-    return text_blocks, image_blocks
+            # Keep image blocks for position reference
+            blocks.append({"text": None, "bbox": list(block["bbox"]), "is_image": True})
+    return blocks
 
 
-def _classify_segments_ai(segments: list[dict]) -> list[dict]:
-    """Use Claude Haiku to classify each text segment semantically."""
-    text_segments = [s for s in segments if s["type"] != "image"]
-    if not text_segments:
-        return segments
+def _match_bbox(segment_content: str, positioned_blocks: list[dict], page_w: float, page_h: float) -> list[float] | None:
+    """Find bounding box for an AI segment by matching its text to positioned blocks."""
+    seg_norm = _normalize(segment_content)
+    if not seg_norm or len(seg_norm) < 3:
+        return None
 
-    # Build the prompt with numbered segments
-    numbered = []
-    for i, seg in enumerate(text_segments):
-        preview = seg["content"][:300]
-        numbered.append(f"[{i}] {preview}")
+    matched = []
+    for block in positioned_blocks:
+        if block.get("is_image"):
+            continue
+        block_norm = _normalize(block["text"])
+        if not block_norm:
+            continue
 
-    segments_text = "\n---\n".join(numbered)
+        # Check if block text (or a significant chunk) appears in the segment
+        # Use first 30 normalized chars as fingerprint
+        fingerprint = block_norm[:30]
+        if len(fingerprint) >= 5 and fingerprint in seg_norm:
+            matched.append(block["bbox"])
+            continue
+
+        # Also check if segment text appears in block
+        seg_fingerprint = seg_norm[:30]
+        if len(seg_fingerprint) >= 5 and seg_fingerprint in block_norm:
+            matched.append(block["bbox"])
+            continue
+
+        # Word overlap check for shorter texts
+        if len(block_norm) < 30:
+            block_words = set(block_norm.split())
+            seg_words = set(seg_norm.split())
+            if block_words and len(block_words & seg_words) >= len(block_words) * 0.7:
+                matched.append(block["bbox"])
+
+    if matched:
+        return [
+            min(b[0] for b in matched) / page_w,
+            min(b[1] for b in matched) / page_h,
+            max(b[2] for b in matched) / page_w,
+            max(b[3] for b in matched) / page_h,
+        ]
+    return None
+
+
+def _ai_segment_page(page_image_b64: str) -> list[dict]:
+    """Send page image to Haiku vision for semantic segmentation."""
     tag_list = ", ".join(TAG_PALETTE.keys())
 
-    prompt = f"""Tu analyses des segments extraits d'une page de cours PDF. Pour chaque segment, détermine son type sémantique en te basant sur SON CONTENU (pas seulement les mots-clés d'introduction).
+    prompt = f"""Analyse cette page de cours/slide. Tu dois :
+
+1. LIRE tout le texte visible, y compris le texte dans les images, figures, schémas, graphiques
+2. SEGMENTER le contenu en sections logiques basées sur le SENS et l'enchaînement des idées (PAS la mise en page)
+3. CLASSIFIER chaque section
 
 Tags disponibles : {tag_list}
 
-Si aucun tag ne correspond, réponds "null".
+Règles de segmentation :
+- Regroupe les paragraphes qui traitent du même sujet/idée
+- Un théorème et son énoncé = un seul segment
+- Une définition avec ses notations = un seul segment
+- Un exemple avec ses calculs = un seul segment
+- Les listes d'items liés = un seul segment
+- Le texte dans les figures/images doit être inclus dans un segment "figure"
+- Les titres/sous-titres sont des segments "title" séparés
 
-Segments :
-{segments_text}
+Réponds UNIQUEMENT avec un JSON array. Chaque élément :
+{{"tag": "...", "content": "le texte exact copié de la page"}}
 
-Réponds UNIQUEMENT avec un JSON array, un tag par segment dans l'ordre. Exemple : ["definition", "example", null, "theorem"]
-Pas d'explication, juste le JSON array."""
+JSON :"""
 
     try:
         client = anthropic.Anthropic()
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": page_image_b64,
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }],
         )
 
         result_text = ""
@@ -207,51 +157,23 @@ Pas d'explication, juste le JSON array."""
                 result_text = block.text
                 break
 
-        # Parse JSON from response
-        # Extract JSON array from response (might have markdown formatting)
+        # Parse JSON array from response
         match = re.search(r"\[.*\]", result_text, re.DOTALL)
         if match:
-            tags = json.loads(match.group())
-        else:
-            tags = []
-
-        # Apply tags to text segments
-        tag_idx = 0
-        for seg in segments:
-            if seg["type"] == "image":
-                seg["semantic_tag"] = None
-                continue
-            if tag_idx < len(tags) and tags[tag_idx] and tags[tag_idx] in TAG_PALETTE:
-                tag_key = tags[tag_idx]
-                info = TAG_PALETTE[tag_key]
-                seg["semantic_tag"] = {
-                    "tag": tag_key,
-                    "label": info["label"],
-                    "color": info["color"],
-                }
-                # Also update type if classified as formula
-                if tag_key == "formula":
-                    seg["type"] = "formula"
-            else:
-                seg["semantic_tag"] = None
-            tag_idx += 1
-
+            return json.loads(match.group())
     except Exception:
-        # If AI fails, leave all tags as None
-        for seg in segments:
-            if "semantic_tag" not in seg:
-                seg["semantic_tag"] = None
+        pass
 
-    return segments
+    return []
 
 
 def extract_page_segments(pdf_path: str, page_number: int, classify: bool = True) -> list[dict]:
-    """Extract and merge segments from a single PDF page (0-indexed).
+    """Extract segments from a PDF page (0-indexed).
 
-    Returns list of segments with keys:
+    Returns list of segments:
         - type: "text" | "formula" | "image"
-        - content: text content or base64-encoded image
-        - bbox: [x0, y0, x1, y1] normalized to [0,1]
+        - content: text content
+        - bbox: [x0, y0, x1, y1] normalized [0,1] or null
         - semantic_tag: { tag, label, color } or null
     """
     doc = fitz.open(pdf_path)
@@ -260,48 +182,90 @@ def extract_page_segments(pdf_path: str, page_number: int, classify: bool = True
         return []
 
     page = doc[page_number]
-    width = page.rect.width
-    height = page.rect.height
+    page_w = page.rect.width
+    page_h = page.rect.height
 
-    text_blocks, image_blocks = _extract_raw_blocks(page)
+    # Get positioned blocks for bbox mapping
+    positioned_blocks = _extract_positioned_blocks(page)
+
+    if not classify:
+        # Simple extraction without AI
+        doc.close()
+        segments = []
+        for block in positioned_blocks:
+            if block.get("is_image"):
+                continue
+            segments.append({
+                "type": "text",
+                "content": block["text"],
+                "bbox": [
+                    block["bbox"][0] / page_w,
+                    block["bbox"][1] / page_h,
+                    block["bbox"][2] / page_w,
+                    block["bbox"][3] / page_h,
+                ],
+                "semantic_tag": None,
+            })
+        return segments
+
+    # Render page as image for Haiku vision
+    pix = page.get_pixmap(dpi=150)
+    img_b64 = base64.b64encode(pix.tobytes("png")).decode("ascii")
     doc.close()
 
-    # Merge adjacent text blocks into logical paragraphs
-    merged_text = _merge_blocks(text_blocks, height)
+    # AI segmentation + classification
+    ai_segments = _ai_segment_page(img_b64)
 
-    # Normalize bboxes to [0,1]
-    segments = []
-    for block in merged_text:
-        block.pop("avg_font_size", None)
-        block["bbox"] = [
-            block["bbox"][0] / width,
-            block["bbox"][1] / height,
-            block["bbox"][2] / width,
-            block["bbox"][3] / height,
-        ]
-        segments.append(block)
+    if not ai_segments:
+        # Fallback: return raw blocks without tags
+        segments = []
+        for block in positioned_blocks:
+            if block.get("is_image"):
+                continue
+            segments.append({
+                "type": "text",
+                "content": block["text"],
+                "bbox": [
+                    block["bbox"][0] / page_w,
+                    block["bbox"][1] / page_h,
+                    block["bbox"][2] / page_w,
+                    block["bbox"][3] / page_h,
+                ],
+                "semantic_tag": None,
+            })
+        return segments
 
-    for img in image_blocks:
-        img["bbox"] = [
-            img["bbox"][0] / width,
-            img["bbox"][1] / height,
-            img["bbox"][2] / width,
-            img["bbox"][3] / height,
-        ]
-        img["semantic_tag"] = None
-        segments.append(img)
+    # Build final segments with bboxes and tags
+    result = []
+    for ai_seg in ai_segments:
+        tag_key = ai_seg.get("tag", "text")
+        content = ai_seg.get("content", "").strip()
+        if not content:
+            continue
 
-    # Sort all segments top-to-bottom
-    segments.sort(key=lambda s: (s["bbox"][1], s["bbox"][0]))
+        tag_info = TAG_PALETTE.get(tag_key)
+        semantic_tag = {
+            "tag": tag_key,
+            "label": tag_info["label"],
+            "color": tag_info["color"],
+        } if tag_info else None
 
-    # AI classification
-    if classify:
-        segments = _classify_segments_ai(segments)
-    else:
-        for seg in segments:
-            seg.setdefault("semantic_tag", None)
+        seg_type = "text"
+        if tag_key == "formula":
+            seg_type = "formula"
+        elif tag_key == "figure":
+            seg_type = "image"
 
-    return segments
+        bbox = _match_bbox(content, positioned_blocks, page_w, page_h)
+
+        result.append({
+            "type": seg_type,
+            "content": content,
+            "bbox": bbox,
+            "semantic_tag": semantic_tag,
+        })
+
+    return result
 
 
 def extract_all_pages(pdf_path: str) -> dict[int, list[dict]]:
